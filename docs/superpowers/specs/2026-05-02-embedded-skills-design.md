@@ -1,6 +1,6 @@
 # Embedded Skills Design
 
-**Date:** 2026-05-02  
+**Date:** 2026-05-02
 **Scope:** 3 new Claude Code skills for embedded C/C++ development workflows
 
 ---
@@ -13,23 +13,24 @@ Three independent skills that each accept `git diff` as primary input and produc
 
 ## Skill 1: `c-code-review-from-diff`
 
-### Purpose
+### Skill 1 Purpose
 
 Review C/C++ embedded code changes from `git diff` and produce a severity-annotated Markdown report.
 
-### Trigger
+### Skill 1 Trigger
 
 User requests a code review of recent changes in an embedded C/C++ project.
 
-### Workflow
+### Skill 1 Workflow
 
-```
+```text
 git diff → parse diff → extract changed functions → embedded checks → quality checks → output report
 ```
 
 ### Review Layers
 
 **Embedded-specific:**
+
 - Memory management: no `malloc`/`free` in ISR, stack depth, static allocation patterns
 - Interrupt safety: `volatile` on shared variables, critical section protection, no blocking calls in ISR
 - HAL boundary violations: direct register access outside HAL layer
@@ -37,6 +38,7 @@ git diff → parse diff → extract changed functions → embedded checks → qu
 - Magic register addresses: bare hex addresses without named constants
 
 **General quality:**
+
 - Function size (< 50 lines)
 - Naming conventions
 - Nesting depth (max 4 levels, prefer early return)
@@ -46,14 +48,14 @@ git diff → parse diff → extract changed functions → embedded checks → qu
 
 ### Severity Levels
 
-| Level | Meaning | Action |
-|---|---|---|
+| Level    | Meaning                                      | Action                    |
+| -------- | -------------------------------------------- | ------------------------- |
 | CRITICAL | Safety risk, data corruption, undefined behavior | Must fix before merge |
-| HIGH | Bug or significant quality issue | Should fix before merge |
-| MEDIUM | Maintainability concern | Consider fixing |
-| LOW | Style or minor suggestion | Optional |
+| HIGH     | Bug or significant quality issue             | Should fix before merge   |
+| MEDIUM   | Maintainability concern                      | Consider fixing           |
+| LOW      | Style or minor suggestion                    | Optional                  |
 
-### Output Format
+### Skill 1 Output Format
 
 ```markdown
 # Code Review Report
@@ -74,7 +76,7 @@ git diff → parse diff → extract changed functions → embedded checks → qu
 <list of checked items that passed>
 ```
 
-### Output File
+### Skill 1 Output File
 
 Written to `docs/reviews/YYYY-MM-DD-<module>-review.md` (optional; can also print to stdout).
 
@@ -82,33 +84,33 @@ Written to `docs/reviews/YYYY-MM-DD-<module>-review.md` (optional; can also prin
 
 ## Skill 2: `change-spec-from-diff`
 
-### Purpose
+### Skill 2 Purpose
 
 Generate a human-readable change specification document in Markdown from `git diff` output.
 
-### Trigger
+### Skill 2 Trigger
 
 User needs to document what changed for handoff, release notes, or traceability.
 
-### Workflow
+### Skill 2 Workflow
 
-```
+```text
 git diff → classify changes by module/function → determine change type → expand into template → write Markdown
 ```
 
 ### Change Type Classification
 
-| Diff pattern | Change type |
-|---|---|
-| New function added | New feature |
-| Function signature changed | Interface change |
+| Diff pattern                              | Change type      |
+| ----------------------------------------- | ---------------- |
+| New function added                        | New feature      |
+| Function signature changed                | Interface change |
 | Function body modified (signature unchanged) | Behavior change |
-| Function deleted | Feature removal |
-| Macro/constant changed | Constant change |
-| File added | New module |
-| File deleted | Module removal |
+| Function deleted                          | Feature removal  |
+| Macro/constant changed                    | Constant change  |
+| File added                                | New module       |
+| File deleted                              | Module removal   |
 
-### Output Template
+### Skill 2 Output Template
 
 ```markdown
 # Change Specification
@@ -137,7 +139,7 @@ git diff → classify changes by module/function → determine change type → e
 <list of test files that cover the changed functions, or "None — tests needed">
 ```
 
-### Output File
+### Skill 2 Output File
 
 `docs/changes/YYYY-MM-DD-<module>-change-spec.md`
 
@@ -145,17 +147,17 @@ git diff → classify changes by module/function → determine change type → e
 
 ## Skill 3: `docx-review-comment-from-diff`
 
-### Purpose
+### Skill 3 Purpose
 
 Given a `git diff` and an existing `.docx` specification document, produce a Markdown report listing exactly which sections of the docx need to be updated and what to change.
 
-### Trigger
+### Skill 3 Trigger
 
 User has an existing Word specification document and wants to know which parts need to be updated to reflect recent code changes.
 
-### Workflow
+### Skill 3 Workflow
 
-```
+```text
 git diff + docx → extract docx text → search for affected symbols → identify impacted sections → output comment report
 ```
 
@@ -177,12 +179,13 @@ echo "Neither python-docx nor pandoc found. Install one to continue."
 ### Symbol Search Strategy
 
 For each changed function/constant/type from the diff:
+
 1. Search docx text for exact symbol name
 2. Search for common aliases (e.g., `uart_send` → "UART送信", "uart send")
 3. Search for related section headings (e.g., "エラーコード", "戻り値")
 4. Record paragraph text and approximate location (heading path)
 
-### Output Format
+### Skill 3 Output Format
 
 ```markdown
 # Specification Update Report
@@ -207,7 +210,7 @@ For each changed function/constant/type from the diff:
 <list of changed symbols confirmed to have no mention in the docx>
 ```
 
-### Output File
+### Skill 3 Output File
 
 `docs/docx-review/YYYY-MM-DD-<docx-basename>-update-report.md`
 
