@@ -36,6 +36,8 @@ From each `@@` hunk, identify:
 
 For each changed function, apply the following checks:
 
+> **Identifying ISR handlers:** Treat a function as an ISR if its name matches `*_IRQHandler` or `*_Handler`, it is decorated with `__attribute__((interrupt))` or `__attribute__((isr))`, or it is registered via `NVIC_SetVector` or equivalent. If ambiguous, note the uncertainty in the issue block rather than skipping the check.
+
 | Check | Pattern to detect | Severity |
 | ----- | ----------------- | -------- |
 | malloc/free in ISR | `malloc`, `free`, `new`, `delete` inside ISR handler | CRITICAL |
@@ -44,7 +46,7 @@ For each changed function, apply the following checks:
 | Missing critical section | Read-modify-write on shared variable without IRQ disable/enable | HIGH |
 | Direct register access outside HAL | Bare `0x4000xxxx` address used outside the HAL layer | HIGH |
 | Blocking I/O without timeout | `HAL_UART_Receive`, `HAL_SPI_TransmitReceive`, etc. with `HAL_MAX_DELAY` | HIGH |
-| Large stack allocation | Local array or struct > 256 bytes on stack | MEDIUM |
+| Large stack allocation | Local array or struct > 256 bytes on stack (adjust to project stack size if known from linker script) | MEDIUM |
 | Magic register address | Bare hex constant for a peripheral register address | MEDIUM |
 
 ### Step 3: General Quality Checks
@@ -62,6 +64,8 @@ For each changed function, apply the following checks:
 ### Step 4: Write the Report
 
 For each issue found, write a block with severity tag, file location, code snippet, reason, and concrete fix.
+
+After writing all issue blocks, append a "Passed Checks" section listing every check from Steps 2 and 3 that produced no finding, tagged with `[embedded]` or `[quality]` as shown in the output format.
 
 ## Output Format
 
@@ -109,9 +113,19 @@ void USART1_IRQHandler(void) {
 - [quality ] No functions exceed 50 lines
 ```
 
+## Inconclusive Checks
+
+If a check cannot be determined from the diff alone (e.g., whether a variable is shared with an ISR), emit an `[INFO]` note rather than omitting the check:
+
+```markdown
+### [INFO] Cannot confirm volatile correctness
+- **Symbol:** `rx_flag`
+- **Note:** Cannot confirm from diff alone whether this variable is written by an ISR. Verify that no ISR accesses `rx_flag` outside this diff.
+```
+
 ## Output File
 
-Write to `docs/reviews/YYYY-MM-DD-<module>-review.md`. Create the directory if it does not exist:
+Write to `docs/reviews/YYYY-MM-DD-<module>-review.md` where `<module>` is the basename of the primary changed file (e.g., `uart` for `src/uart.c`). If multiple files changed, use the first alphabetically. Create the directory if it does not exist:
 
 ```bash
 mkdir -p docs/reviews
