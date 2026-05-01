@@ -11,6 +11,18 @@ Extract text from an existing `.docx` specification, search for symbols that cha
 
 **The docx is not modified.** The report is for the human editor.
 
+## How to Invoke
+
+Provide:
+
+1. **Path to the .docx file** — absolute or relative to the repository root, e.g., `docs/spec.docx`
+2. **Git diff range** — optional, defaults to `HEAD~1 HEAD`. Examples: `HEAD~3 HEAD`, `origin/main...HEAD`
+
+Example prompt:
+> "Review `docs/hardware-spec.docx` against `git diff HEAD~1 HEAD`"
+
+Run all commands from the repository root (the directory containing `.git/`).
+
 ## Prerequisite Check
 
 Before starting, verify a text extraction tool is available:
@@ -34,6 +46,8 @@ Install one before proceeding:
   brew install pandoc       (macOS)
 ```
 
+If neither tool is confirmed available, halt. Do not proceed to Step 1.
+
 ## Workflow
 
 ```text
@@ -45,16 +59,26 @@ git diff + docx path → extract docx text → collect changed symbols → searc
 Use whichever tool is available:
 
 ```bash
-# Option 1: python-docx (preserves heading context — preferred)
+# Option 1: python-docx (preserves heading context and table rows — preferred)
 python3 - spec.docx << 'EOF'
 import docx, sys
+import docx.text.paragraph, docx.table
 doc = docx.Document(sys.argv[1])
 current_heading = "(preamble)"
-for p in doc.paragraphs:
-    if p.style.name.startswith("Heading"):
-        current_heading = p.text.strip()
-    elif p.text.strip():
-        print(f"[{current_heading}] {p.text.strip()}")
+for block in doc.element.body:
+    tag = block.tag.split('}')[-1]
+    if tag == 'p':
+        p = docx.text.paragraph.Paragraph(block, doc)
+        if p.style.name.startswith("Heading"):
+            current_heading = p.text.strip()
+        elif p.text.strip():
+            print(f"[{current_heading}] {p.text.strip()}")
+    elif tag == 'tbl':
+        tbl = docx.table.Table(block, doc)
+        for row in tbl.rows:
+            cells = [c.text.strip() for c in row.cells if c.text.strip()]
+            if cells:
+                print(f"[{current_heading}] TABLE_ROW: {' | '.join(cells)}")
 EOF
 
 # Option 2: pandoc (plain text, no heading context)
@@ -84,11 +108,24 @@ For each symbol, search the extracted text in this order:
 
 1. **Exact symbol name** — e.g., `uart_send`
 2. **Space-separated form** — e.g., `uart send`
-3. **Related keywords** — for error codes: "エラーコード", "error code", "戻り値", "return value"; for types: "型定義", "typedef"
+3. **Related keywords by symbol type:**
+
+| Symbol type | Japanese keywords | English keywords |
+| ----------- | ----------------- | ---------------- |
+| Function | 関数, 引数, 戻り値 | function, argument, return value |
+| Macro/constant | マクロ, 定数 | macro, define, constant |
+| Typedef | 型定義, 型 | typedef, type |
+| Enum value | エラーコード, 列挙 | enum, error code, return value |
 
 Record for each match:
 - Heading context (from Step 1)
 - Full paragraph text (first 200 characters)
+- Whether it was found in a paragraph or a TABLE_ROW
+
+After searching all symbols:
+- Found with relevant diff context → add to "Sections Requiring Update"
+- Found but change is internal/non-behavioral → add to "No Update Required"
+- Not found in any search pass → add to "Symbols Not Found in Document"
 
 ### Step 4: Write the Report
 
@@ -144,7 +181,7 @@ The following changed symbols were found in the document but the change does not
 
 ## Output File
 
-Write to `docs/docx-review/YYYY-MM-DD-<docx-basename>-update-report.md` where `<docx-basename>` is the filename without extension:
+Write to `docs/docx-review/YYYY-MM-DD-<docx-basename>-update-report.md` relative to the repository root (the directory containing `.git/`). `<docx-basename>` is the filename without extension:
 
 ```bash
 mkdir -p docs/docx-review
