@@ -48,12 +48,12 @@ git diff → parse diff → extract changed functions → embedded checks → qu
 
 ### Severity Levels
 
-| Level    | Meaning                                      | Action                    |
-| -------- | -------------------------------------------- | ------------------------- |
-| CRITICAL | Safety risk, data corruption, undefined behavior | Must fix before merge |
-| HIGH     | Bug or significant quality issue             | Should fix before merge   |
-| MEDIUM   | Maintainability concern                      | Consider fixing           |
-| LOW      | Style or minor suggestion                    | Optional                  |
+| Level    | Meaning                                          | Action                  |
+| -------- | ------------------------------------------------ | ----------------------- |
+| CRITICAL | Safety risk, data corruption, undefined behavior | Must fix before merge   |
+| HIGH     | Bug or significant quality issue                 | Should fix before merge |
+| MEDIUM   | Maintainability concern                          | Consider fixing         |
+| LOW      | Style or minor suggestion                        | Optional                |
 
 ### Skill 1 Output Format
 
@@ -100,15 +100,15 @@ git diff → classify changes by module/function → determine change type → e
 
 ### Change Type Classification
 
-| Diff pattern                              | Change type      |
-| ----------------------------------------- | ---------------- |
-| New function added                        | New feature      |
-| Function signature changed                | Interface change |
-| Function body modified (signature unchanged) | Behavior change |
-| Function deleted                          | Feature removal  |
-| Macro/constant changed                    | Constant change  |
-| File added                                | New module       |
-| File deleted                              | Module removal   |
+| Diff pattern                                  | Change type      |
+| --------------------------------------------- | ---------------- |
+| New function added                            | New feature      |
+| Function signature changed                    | Interface change |
+| Function body modified (signature unchanged)  | Behavior change  |
+| Function deleted                              | Feature removal  |
+| Macro/constant changed                        | Constant change  |
+| File added                                    | New module       |
+| File deleted                                  | Module removal   |
 
 ### Skill 2 Output Template
 
