@@ -21,6 +21,10 @@ git diff → classify changes by module/function → determine change type → e
 # Get the diff (adjust ref as needed)
 git diff HEAD~1 HEAD
 
+# Other common ranges:
+git diff <tag>..HEAD          # since a release tag
+git diff origin/main...HEAD   # all branch commits
+
 # Get commit metadata for the spec header
 git log -1 --format="%H %an %ad %s" --date=short
 git branch --show-current
@@ -40,16 +44,20 @@ For each changed file, group hunks by function and classify using this table:
 | New `.c` or `.h` file added | New module |
 | `.c` or `.h` file deleted | Module removal |
 
+**When the diff touches multiple files:** Create one `### <module>` sub-section per changed module in the output. If more than 5 modules change, split into one spec file per module and link them from a summary document.
+
+**For header-only changes** (struct layout, typedef, macro value): use the before/after table with rows `Declaration`, `Effective size/value`, and `Impact` instead of the default Signature/Behavior/Return rows.
+
 ### Step 3: Determine Impact
 
 For each changed function or constant, find callers and test files:
 
 ```bash
 # Find callers in source and include directories
-grep -rn "function_name" src/ include/
+grep -rn "\bfunction_name\b" src/ include/
 
 # Find related test files
-grep -rn "function_name" test/
+grep -rn "\bfunction_name\b" test/
 ```
 
 Record: caller file paths and line numbers, test file paths.
@@ -99,6 +107,8 @@ Affected call sites: `src/protocol.c:45`, `src/logger.c:112`
 
 > **Breaking change:** `uart_send()` now requires a third argument `timeout_ms`.
 > Update all call sites. Recommended value: `UART_DEFAULT_TIMEOUT_MS` (defined in `uart.h`).
+
+> For non-breaking changes, write: `No breaking changes.`
 
 ---
 
