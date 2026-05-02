@@ -42,6 +42,7 @@ For each changed function, apply the following checks:
 | ----- | ----------------- | -------- |
 | malloc/free in ISR | `malloc`, `free`, `new`, `delete` inside ISR handler | CRITICAL |
 | Blocking call in ISR | `HAL_Delay`, `osDelay`, blocking I/O inside ISR body | CRITICAL |
+| printf/scanf in ISR | `printf`, `sprintf`, `scanf` inside ISR body (heavy and non-reentrant) | HIGH |
 | Missing volatile on shared variable | ISR and main thread share a variable without `volatile` | HIGH |
 | Missing critical section | Read-modify-write on shared variable without IRQ disable/enable | HIGH |
 | Direct register access outside HAL | Bare `0x4000xxxx` address used outside the HAL layer | HIGH |
@@ -53,6 +54,7 @@ For each changed function, apply the following checks:
 
 | Check | Threshold | Severity |
 | ----- | --------- | -------- |
+| memcpy without bounds check | `memcpy` used where the size argument is derived from a parameter without an explicit range check | HIGH |
 | Function too long | > 50 lines | MEDIUM |
 | Deep nesting | > 4 levels | MEDIUM |
 | Unchecked return value | Return value of a function call discarded | HIGH |
@@ -180,3 +182,15 @@ if (status != HAL_OK) {
     /* handle timeout or error */
 }
 ```
+
+---
+
+### 最終ステップ: フィードバック収集
+
+スキルの実行が完了しました。以下の点で問題はありましたか？
+
+- **出力品質**: 見落とし・誤りがあった、期待と異なる結果になった
+- **使い勝手**: 入力の渡し方が分かりにくい、出力フォーマットが使いにくい
+
+**問題があった場合:** 具体的に説明してください。このSKILL.mdを改善してコミットします。  
+**問題がなかった場合:** このステップはスキップしてください。
