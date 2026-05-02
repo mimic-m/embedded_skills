@@ -12,7 +12,7 @@
 | [`ceedling-test-from-diff`](skills/ceedling-test-from-diff/SKILL.md) | git diff から Ceedling ユニットテスト（`test_*.c`）を生成・更新する |
 | [`fff-mock-generation`](skills/fff-mock-generation/SKILL.md) | git diff から FFF フェイク関数宣言（`FAKE_VOID_FUNC` / `FAKE_VALUE_FUNC`）を生成する |
 | [`c-code-review-from-diff`](skills/c-code-review-from-diff/SKILL.md) | git diff の変更箇所を組み込み観点＋一般品質観点でレビューし、重大度付きレポートを出力する |
-| [`change-spec-from-diff`](skills/change-spec-from-diff/SKILL.md) | git diff から変更仕様書（Markdown）を生成する |
+| [`change-spec`](skills/change-spec/SKILL.md) | git diff または issue・要件テキストから変更仕様書（Markdown）を生成する |
 | [`docx-review-comment-from-diff`](skills/docx-review-comment-from-diff/SKILL.md) | git diff をもとに既存 Word 仕様書（.docx）の修正が必要な箇所を特定し、レポートを出力する |
 | [`technical-writing-review`](skills/technical-writing-review/SKILL.md) | 日本語技術文書をGoogle Technical Writing Oneの8カテゴリでレビューし、改善案付きレポートを出力する |
 
@@ -24,7 +24,7 @@
 
 ```bash
 # 例: すべてのスキルをインストール
-for skill in ceedling-test-from-diff fff-mock-generation c-code-review-from-diff change-spec-from-diff docx-review-comment-from-diff technical-writing-review; do
+for skill in ceedling-test-from-diff fff-mock-generation c-code-review-from-diff change-spec docx-review-comment-from-diff technical-writing-review; do
   mkdir -p ~/.claude/skills/$skill
   cp skills/$skill/SKILL.md ~/.claude/skills/$skill/SKILL.md
 done
@@ -38,7 +38,7 @@ done
 
 ### `ceedling-test-from-diff`
 
-```
+```text
 git diff の変更を確認してテストを作成してください
 ```
 
@@ -46,7 +46,7 @@ git diff の変更を確認してテストを作成してください
 
 ### `fff-mock-generation`
 
-```
+```text
 git diff の変更に対して FFF フェイクを生成してください
 ```
 
@@ -54,7 +54,7 @@ git diff の変更に対して FFF フェイクを生成してください
 
 ### `c-code-review-from-diff`
 
-```
+```text
 git diff HEAD~1 HEAD のコードレビューをしてください
 ```
 
@@ -63,17 +63,17 @@ git diff HEAD~1 HEAD のコードレビューをしてください
 - **組み込み固有**: ISR 内の malloc・ブロッキング呼び出し、volatile 漏れ、HAL 境界違反、タイムアウトなし
 - **一般品質**: 関数サイズ・ネスト深さ・戻り値未チェック・マジックナンバー
 
-### `change-spec-from-diff`
+### `change-spec`
 
-```
+```text
 git diff HEAD~1 HEAD の変更仕様書を作成してください
 ```
 
-関数追加・インターフェース変更・動作変更などを分類し、互換性への影響と関連テストをまとめた Markdown を `docs/changes/` に出力します。
+issue・要件テキスト・git diff のいずれかを入力として受け付け、関数追加・インターフェース変更・動作変更などを分類し、要件（What/Why/What→What）・変更概要・シーケンス図・ファイル一覧をまとめた日本語 Markdown を `docs/changes/` に出力します。
 
 ### `docx-review-comment-from-diff`
 
-```
+```text
 git diff HEAD~1 HEAD の内容で docs/spec.docx のどこを修正すればよいか教えてください
 ```
 
@@ -81,7 +81,7 @@ python-docx または pandoc で docx を解析し、変更されたシンボル
 
 ### `technical-writing-review`
 
-```
+```text
 technical-writing-reviewでREADME.mdをレビューしてください
 ```
 
