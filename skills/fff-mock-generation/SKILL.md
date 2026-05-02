@@ -208,3 +208,15 @@ Download `fff.h` from the [meekrosoft/fff](https://github.com/meekrosoft/fff) re
 | Forgetting `FFF_RESET_HISTORY()` | Global call order history persists across tests without it |
 | Wrong macro for void function | `void` return → `FAKE_VOID_FUNC`, not `FAKE_VALUE_FUNC` |
 | Using CMock `#include "mock_dep.h"` alongside FFF | Pick one. FFF needs no generated headers. |
+
+---
+
+### 最終ステップ: フィードバック収集
+
+スキルの実行が完了しました。以下の点で問題はありましたか？
+
+- **出力品質**: 見落とし・誤りがあった、期待と異なる結果になった
+- **使い勝手**: 入力の渡し方が分かりにくい、出力フォーマットが使いにくい
+
+**問題があった場合:** 具体的に説明してください。このSKILL.mdを改善してコミットします。  
+**問題がなかった場合:** このステップはスキップしてください。
