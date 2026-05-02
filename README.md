@@ -102,6 +102,35 @@ Cppcheck XML / PC-lint テキストをパースし、MISRA-C 規則種別（Mand
 
 ---
 
+## 推奨ワークフロー
+
+スキルは独立して使えますが、以下の順序で組み合わせると効果的です。
+
+### 要件定義〜設計フェーズ
+
+```
+1. extract-requirements-documents   顧客資料 (PDF/docx/xlsx) から要件定義書を作成
+2. change-spec（設計フェーズモード）  要件をもとに実装前の変更仕様書を作成
+```
+
+### 実装・PR レビューフェーズ
+
+```
+3. static-analysis-report           静的解析で構造的な問題を先に洗い出す
+4. c-code-review-from-diff          組み込み観点のコードレビュー
+5. ceedling-test-from-diff          変更関数のユニットテスト生成・更新
+6. fff-mock-generation              必要なフェイク関数の宣言を生成
+```
+
+### リリース前・ドキュメント更新フェーズ
+
+```
+7. change-spec（実装後モード）        git diff をもとに変更仕様書を確定
+8. docx-review-comment-from-diff    既存 Word 仕様書の修正が必要な箇所を特定
+```
+
+---
+
 ## 動作環境
 
 | ツール | 用途 | 必須 |

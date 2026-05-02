@@ -48,6 +48,8 @@ Install one before proceeding:
 
 If neither tool is confirmed available, halt. Do not proceed to Step 1.
 
+> **Track Changes の制約:** python-docx は Word の「変更の追跡（Track Changes）」が有効なファイルに対して、承認済みの最終テキストのみを取得する。削除されたテキストや提案中の変更は読み込まれない。Track Changes が有効なファイルでは、事前に Word またはLibreOffice で変更をすべて承認してからこのスキルを実行することを推奨する。
+
 ## Workflow
 
 ```text
@@ -83,6 +85,30 @@ EOF
 
 # Option 2: pandoc (plain text, no heading context)
 pandoc spec.docx -t plain -o /tmp/spec_plain.txt && cat /tmp/spec_plain.txt
+```
+
+After extraction, count the number of non-empty lines returned:
+
+```bash
+# 抽出テキストの行数を確認する
+python3 - spec.docx << 'EOF'
+import docx, sys
+doc = docx.Document(sys.argv[1])
+lines = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
+print(len(lines))
+EOF
+```
+
+抽出テキストが **10行未満** の場合は、スキャン画像ベースのドキュメントである可能性が高い。処理を中止し、以下を表示する：
+
+```
+WARNING: Extracted fewer than 10 lines of text from the docx file.
+The document may be image-based (scanned) or contain only embedded images.
+To enable text extraction, run OCR first:
+  pip install ocrmypdf                      # PDF経由でOCR
+  ocrmypdf --skip-text input.pdf output.pdf
+  pandoc output.pdf -t docx -o output.docx
+  # または LibreOffice でテキスト付きdocxを再作成する
 ```
 
 ### Step 2: Collect Changed Symbols from Diff

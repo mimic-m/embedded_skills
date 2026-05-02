@@ -104,16 +104,38 @@ src/uart.c(42) : warning 714: Symbol 'y' not referenced  [MISRA 2012 Rule 9.1, r
 
 ### Step 1c: Cppcheck をその場で実行する
 
+最も正確な解析のために、利用可能なオプションを以下の優先順位で選択する：
+
 ```bash
-# 基本実行（XML出力）
+# 優先1: compile_commands.json がある場合（ビルド設定をそのまま使用 — 最も正確）
+cppcheck --project=compile_commands.json --xml --xml-version=2 --enable=all \
+  2> /tmp/cppcheck-result.xml
+
+# compile_commands.json がない場合は cmake で生成できる
+cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -B build && cp build/compile_commands.json .
+```
+
+```bash
+# 優先2: 抑制ファイルがある場合（既知の偽陽性を除外）
+cppcheck --xml --xml-version=2 --enable=all \
+  --suppressions-list=suppressions.xml src/ 2> /tmp/cppcheck-result.xml
+```
+
+```bash
+# 優先3: 基本実行
 cppcheck --xml --xml-version=2 --enable=all --inconclusive src/ 2> /tmp/cppcheck-result.xml
 
-# MISRA-C 2012 アドオンを使用する場合
+# MISRA-C 2012 アドオンを追加する場合
 cppcheck --xml --xml-version=2 --enable=all --addon=misra src/ 2> /tmp/cppcheck-result.xml
 
 # インクルードパスを指定する場合
 cppcheck --xml --xml-version=2 --enable=all -I include/ src/ 2> /tmp/cppcheck-result.xml
 ```
+
+> **抑制ファイルについて:** プロジェクトに `suppressions.xml` や `.cppcheck` が存在する場合は必ず使用する。これらのファイルはチームが合意した既知の偽陽性を除外するためのものであり、無視するとレポートがノイズで埋まる。抑制ファイルが存在するか確認するには:
+> ```bash
+> ls suppressions.xml .cppcheck 2>/dev/null
+> ```
 
 実行後、生成された `/tmp/cppcheck-result.xml` を Step 1a で処理する。
 
@@ -195,6 +217,22 @@ MISRA タグ付きの場合は上記 MISRA 種別ルールを適用する。
 重大度ごとの件数サマリーを冒頭テーブルに記載する。
 
 指摘が0件のカテゴリはサマリーテーブルのみに `0` と記載し、「問題一覧」セクションには含めない。
+
+#### 大量指摘時のフィルタリング
+
+CRITICAL + HIGH の合計が **50件を超える場合**、またはMEDIUM以下を含めた総件数が **100件を超える場合** は、初回対応フェーズとして以下のように出力を絞る：
+
+- **問題一覧**: CRITICAL と HIGH のみ記載する
+- **サマリーテーブル**: MEDIUM / LOW は件数のみ記載（詳細は省略）
+- レポートの冒頭に以下の注記を追加する：
+
+```markdown
+> **注記（初回対応フェーズ）:** 指摘件数が多いため、問題一覧には CRITICAL / HIGH のみを記載しています。
+> MEDIUM / LOW はサマリー件数を参照してください。CRITICAL / HIGH をすべて解消した後、
+> MEDIUM / LOW を対象に再実行することを推奨します。
+```
+
+CRITICAL + HIGH が50件以下の場合は、すべての重大度を通常通り出力する。
 
 ---
 

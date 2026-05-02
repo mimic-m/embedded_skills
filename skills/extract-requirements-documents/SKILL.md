@@ -135,6 +135,23 @@ with pdfplumber.open(sys.argv[1]) as pdf:
 EOF
 ```
 
+抽出後、テキストが極端に少ない場合はスキャン画像ベースのPDFである可能性がある：
+
+```bash
+# 抽出テキストの文字数を確認する
+pdftotext -layout doc.pdf - | wc -c
+```
+
+抽出文字数が **200文字未満** の場合は、OCRが必要な可能性が高い。処理を中止し、以下を表示する：
+
+```
+WARNING: Extracted fewer than 200 characters from the PDF file.
+The document may be image-based (scanned). Run OCR before proceeding:
+  pip install ocrmypdf
+  ocrmypdf --skip-text input.pdf ocr-output.pdf
+  # その後 ocr-output.pdf を入力として再実行する
+```
+
 #### docx の抽出
 
 ```bash
@@ -249,6 +266,16 @@ EOF
 分類が困難な記述は要件定義書の「未確認事項・要確認（TBD）」セクションに記録する。
 
 各要件には必ず出典（ファイル名・ページ番号またはシート名・見出し）を付記する。
+
+#### 複数資料間の重複要件の統合ルール
+
+同一要件が複数の入力資料に登場する場合は以下のルールで処理する：
+
+| 状況 | 対処 |
+|------|------|
+| 複数資料で同一内容の要件が記載されている | IDを1つだけ採番し、「出典」列にすべての資料名・ページを列挙する（例: `rfq.pdf p.3, spec.docx §2.1`） |
+| 複数資料で同一要件の記述が微妙に異なる（表現の違い） | より具体的・詳細な記述を本文として採用し、出典を複数列挙する |
+| 複数資料で同一要件が**矛盾している**（数値・条件が異なる） | 両方の記述を抽出し、TBD-XXXとして「〈資料A〉と〈資料B〉で記述が矛盾。確認が必要」と記録する |
 
 ---
 
