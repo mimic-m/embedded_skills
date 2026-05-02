@@ -39,7 +39,7 @@ Add the following as the final step of each skill, after all output has been pro
 
 ### Flow
 
-```
+```text
 スキル完了
   ↓
 フィードバック収集ステップを実行
@@ -56,7 +56,7 @@ Add the following as the final step of each skill, after all output has been pro
 
 ### Improvement Commit Convention
 
-```
+```text
 fix: improve <skill-name> based on usage feedback
 
 <問題の概要>
@@ -68,7 +68,7 @@ fix: improve <skill-name> based on usage feedback
 ## Target Skills
 
 | スキル | SKILL.mdパス |
-|---|---|
+| --- | --- |
 | `change-spec` | `skills/change-spec/SKILL.md` |
 | `c-code-review-from-diff` | `skills/c-code-review-from-diff/SKILL.md` |
 | `ceedling-test-from-diff` | `skills/ceedling-test-from-diff/SKILL.md` |
