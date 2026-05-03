@@ -46,7 +46,8 @@ For each changed function, apply the following checks:
 | Missing volatile on shared variable | ISR and main thread share a variable without `volatile` | HIGH |
 | Missing critical section | Read-modify-write on shared variable without IRQ disable/enable | HIGH |
 | Direct register access outside HAL | Bare `0x4000xxxx` address used outside the HAL layer | HIGH |
-| Blocking I/O without timeout | `HAL_UART_Receive`, `HAL_SPI_TransmitReceive`, etc. with `HAL_MAX_DELAY` | HIGH |
+| Blocking I/O without timeout | Blocking I/O API called with infinite-wait constant (`HAL_MAX_DELAY`, `UINT32_MAX`, `OS_WAIT_FOREVER`, `portMAX_DELAY`, `-1`, or equivalent) | HIGH |
+| RTOS shared variable without synchronization | Variable accessed from multiple tasks without mutex, semaphore, or critical section (look for globals/statics written in one task and read in another) | HIGH |
 | Large stack allocation | Local array or struct > 256 bytes on stack (adjust to project stack size if known from linker script) | MEDIUM |
 | Magic register address | Bare hex constant for a peripheral register address | MEDIUM |
 
@@ -143,6 +144,7 @@ If no `docs/` directory exists in the project root, print the report to stdout i
 | HIGH     | Bug or significant quality issue                 | Should fix before merge |
 | MEDIUM   | Maintainability concern                          | Consider fixing         |
 | LOW      | Style or minor suggestion                        | Optional                |
+| INFO     | Cannot be determined from diff alone             | Verify manually outside diff |
 
 ## Common Embedded Fix Patterns
 

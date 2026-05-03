@@ -19,7 +19,15 @@ git diff → check existing test file → identify changed functions → create/
 
 ### Step 0: Check for Existing Test File
 
-Before generating anything, read the existing test file if it exists:
+Before generating anything, run the full test suite once to establish a baseline. This ensures any pre-existing failures are not confused with newly introduced ones:
+
+```bash
+ceedling test:all   # establish baseline — note any pre-existing failures
+```
+
+If the baseline has failures unrelated to the diff, note them but do not fix them now. Proceed to test generation; only the new/changed functions are in scope.
+
+Next, read the existing test file if it exists:
 
 ```bash
 # check if test file already exists
@@ -193,14 +201,82 @@ void test_send_frame_flush_before_send(void) {
 }
 ```
 
-### Choosing between Pattern A and Pattern B
+### Pattern C — RTOS API fakes (FreeRTOS / CMSIS-RTOS)
+
+Use when the module under test calls RTOS primitives directly (`xQueueSend`, `xTaskNotify`, `osSemaphoreAcquire`, etc.). Fake the RTOS API rather than pulling in the real scheduler.
+
+```c
+#include "unity.h"
+#include "fff.h"
+#include "FreeRTOS.h"          /* for types only — no real scheduler */
+#include "<module_under_test>.h"
+
+DEFINE_FFF_GLOBALS;
+
+/* Queue primitives */
+FAKE_VALUE_FUNC(BaseType_t, xQueueSend,    QueueHandle_t, const void *, TickType_t);
+FAKE_VALUE_FUNC(BaseType_t, xQueueReceive, QueueHandle_t, void *,       TickType_t);
+
+/* Task notification */
+FAKE_VALUE_FUNC(BaseType_t, xTaskNotify, TaskHandle_t, uint32_t, eNotifyAction);
+
+/* Semaphore */
+FAKE_VALUE_FUNC(BaseType_t, xSemaphoreTake, SemaphoreHandle_t, TickType_t);
+FAKE_VALUE_FUNC(BaseType_t, xSemaphoreGive, SemaphoreHandle_t);
+
+static QueueHandle_t test_queue = (QueueHandle_t)0x1234;   /* non-null sentinel */
+
+void setUp(void) {
+    RESET_FAKE(xQueueSend);
+    RESET_FAKE(xQueueReceive);
+    RESET_FAKE(xTaskNotify);
+    RESET_FAKE(xSemaphoreTake);
+    RESET_FAKE(xSemaphoreGive);
+    FFF_RESET_HISTORY();
+
+    xSemaphoreTake_fake.return_val = pdTRUE;   /* default: lock succeeds */
+    xSemaphoreGive_fake.return_val = pdTRUE;
+}
+
+void tearDown(void) { }
+
+void test_publish_sends_to_queue_on_success(void) {
+    xQueueSend_fake.return_val = pdTRUE;
+
+    int rc = module_publish(test_queue, 42);
+
+    TEST_ASSERT_EQUAL_INT(MODULE_OK, rc);
+    TEST_ASSERT_EQUAL_INT(1, xQueueSend_fake.call_count);
+}
+
+void test_publish_returns_error_when_queue_full(void) {
+    xQueueSend_fake.return_val = errQUEUE_FULL;
+
+    int rc = module_publish(test_queue, 42);
+
+    TEST_ASSERT_EQUAL_INT(MODULE_ERR_FULL, rc);
+}
+
+void test_acquire_takes_semaphore_before_access(void) {
+    module_acquire_resource();
+
+    TEST_ASSERT_CALLED_IN_ORDER(0, xSemaphoreTake);
+    TEST_ASSERT_CALLED_IN_ORDER(1, xSemaphoreGive);
+}
+```
+
+> **Note on FreeRTOS headers:** Include `FreeRTOS.h` only for type definitions. Do not link the real FreeRTOS kernel — the fakes replace all scheduler calls. Add `-DUNIT_TEST` or equivalent to suppress any `configASSERT` macros that would call real RTOS functions.
+
+### Choosing between Pattern A, Pattern B, and Pattern C
 
 | Signal in diff | Pattern |
 |---|---|
 | `dep_func(args)` — direct call, `dep_func` is in another `.c` file | A |
 | `ctx->backend->send(args)` — call through function pointer | B |
 | `obj->vtable->method(args)` — vtable / interface | B |
-| Mix of both | Both — standalone fakes for free functions, pointer fakes for vtable |
+| `xQueueSend`, `xTaskNotify`, `osSemaphore*`, etc. — RTOS primitive | C |
+| Mix of free functions + vtable | A + B |
+| Mix of free functions + RTOS | A + C |
 
 ### fff_unity_helper.h macros (Ceedling FFF plugin)
 
@@ -353,10 +429,12 @@ void test_sensor_read_returns_error_when_out_null(void) {
 void test_sensor_read_writes_adc_value_to_out(void) {
     sensor_t s = { .channel = 2 };
     uint8_t out = 0;
-    hal_adc_read_ExpectAndReturn(2, 0xAB);
+    hal_adc_read_fake.return_val = 0xAB;
 
     TEST_ASSERT_EQUAL_INT(SENSOR_OK, sensor_read(&s, &out));
     TEST_ASSERT_EQUAL_HEX8(0xAB, out);
+    TEST_ASSERT_EQUAL_INT(1, hal_adc_read_fake.call_count);
+    TEST_ASSERT_EQUAL_INT(2, hal_adc_read_fake.arg0_val);   /* channel passed through */
 }
 ```
 
