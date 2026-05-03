@@ -324,7 +324,7 @@ HAL_UART_Receive(&huart1, rx_buf, RX_LEN, 100);
 
 ## 出力ファイル
 
-`docs/static-analysis/YYYY-MM-DD-<対象>-static-analysis.md` に保存する。リポジトリルート（`.git/` が存在するディレクトリ）からの相対パス。`<対象>` は解析したディレクトリ名またはファイルのベース名。
+`docs/static-analysis/YYYY-MM-DD-<対象>-static-analysis.md` に保存する。リポジトリルート（`.git/` が存在するディレクトリ）からの相対パス。`<対象>` は解析したディレクトリ名またはファイルのベース名。出力前にディレクトリを作成する。
 
 ```bash
 mkdir -p docs/static-analysis
@@ -349,6 +349,6 @@ mkdir -p docs/static-analysis
 |------|------|
 | `information` 指摘をレポートに含める | 件数集計にのみ反映し、問題一覧には出力しない |
 | MISRA 規則種別を確認せず `style` → LOW にマッピングする | MISRA の Mandatory は必ず CRITICAL、Required は HIGH にする |
-| 昇格ルールを適用せず基本マッピングのみ使用する | ISR ハンドラ内の指摘は必ず1段階昇格する |
+| 昇格ルールを適用せず基本マッピングのみ使用する | `*_IRQHandler`、割り込み属性、ベクタテーブル、`NVIC_SetVector` などで ISR 文脈が確認できる指摘は1段階昇格する |
 | 0件のカテゴリのセクションを省略してサマリーにも記載しない | サマリーテーブルには件数 `0` を記載する。「問題一覧」セクションは省略してよい |
 | PC-lint のメッセージ番号とメッセージ本文のみを記載し MISRA 参照を見落とす | `[MISRA ...]` タグが行末にある場合は必ず MISRA 種別ルールを適用する |

@@ -128,7 +128,7 @@ If a check cannot be determined from the diff alone (e.g., whether a variable is
 
 ## Output File
 
-Write to `docs/reviews/YYYY-MM-DD-<module>-review.md` where `<module>` is the basename of the primary changed file (e.g., `uart` for `src/uart.c`). If multiple files changed, use the first alphabetically. Create the directory if it does not exist:
+Write to `docs/reviews/YYYY-MM-DD-<module>-review.md` relative to the repository root (the directory containing `.git/`). `<module>` is the basename of the primary changed file (e.g., `uart` for `src/uart.c`). If multiple files changed, use the first alphabetically. Create the directory before writing:
 
 ```bash
 mkdir -p docs/reviews
@@ -189,10 +189,8 @@ if (status != HAL_OK) {
 
 ### 最終ステップ: フィードバック収集
 
-スキルの実行が完了しました。以下の点で問題はありましたか？
+レポートまたは生成物を出力した後、ユーザーに以下を確認する：
 
-- **出力品質**: 見落とし・誤りがあった、期待と異なる結果になった
-- **使い勝手**: 入力の渡し方が分かりにくい、出力フォーマットが使いにくい
-
-**問題があった場合:** 具体的に説明してください。このSKILL.mdを改善してコミットします。  
-**問題がなかった場合:** このステップはスキップしてください。
+- 指摘・生成内容に過不足がないか
+- 次回から強めたい観点または弱めたい観点があるか
+- プロジェクト固有ルールとして追加すべき判断基準があるか

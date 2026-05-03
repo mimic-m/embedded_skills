@@ -443,7 +443,7 @@ date +%Y-%m-%d
 
 ## 出力ファイル
 
-`docs/requirements/YYYY-MM-DD-requirements.md` に保存する。リポジトリルート（`.git/` が存在するディレクトリ）からの相対パス。プロジェクト名が判明している場合は `YYYY-MM-DD-<プロジェクト名>-requirements.md` とする。
+`docs/requirements/YYYY-MM-DD-requirements.md` に保存する。リポジトリルート（`.git/` が存在するディレクトリ）からの相対パス。プロジェクト名が判明している場合は `YYYY-MM-DD-<プロジェクト名>-requirements.md` とする。出力前にディレクトリを作成する。
 
 ```bash
 mkdir -p docs/requirements
