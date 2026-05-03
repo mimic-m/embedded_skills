@@ -200,9 +200,9 @@ MISRA タグ付きの場合は上記 MISRA 種別ルールを適用する。
 
 | 昇格トリガー | 判定方法 |
 |------------|--------|
-| ISR ハンドラ内の指摘 | ファイル名・関数名に `IRQHandler`, `_Handler`, `_isr`, `_ISR` が含まれる、または `__attribute__((interrupt))` が関連する |
+| ISR ハンドラ内の指摘 | 関数名が `*_IRQHandler` に一致する、`__attribute__((interrupt))` / `__attribute__((isr))` が関連する、ベクタテーブルに現れる、または `NVIC_SetVector` などの割り込みベクタ API で登録されている場合。汎用的な `*_Handler` 名だけでは昇格せず、`[INFO]` として ISR 文脈の手動確認を促す |
 | ヒープ操作 | `malloc`, `free`, `new`, `delete`, `realloc`, `calloc` の使用 |
-| volatile 漏れ | Cppcheck ID `unreadVariable`, `redundantAssignment`、または MISRA Rule 8.6/19.x |
+| volatile 漏れ | 解析結果または周辺コードから、同一シンボルが ISR とメイン処理、または複数 RTOS タスク間で共有されていると確認でき、かつ `volatile` または同期機構がない場合。静的解析結果だけで共有文脈を確認できない場合は昇格せず `[INFO]` として手動確認を促す |
 | スタック上の大きな配列 | CWE-121（スタックバッファオーバーフロー）|
 | 初期化されていない変数 | Cppcheck ID `uninitvar`, `uninitStructMember` |
 

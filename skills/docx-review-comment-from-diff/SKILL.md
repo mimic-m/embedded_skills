@@ -90,12 +90,25 @@ pandoc spec.docx -t plain -o /tmp/spec_plain.txt && cat /tmp/spec_plain.txt
 After extraction, count the number of non-empty lines returned:
 
 ```bash
-# 抽出テキストの行数を確認する
+# 抽出テキストの行数を確認する（段落 + 表行）
 python3 - spec.docx << 'EOF'
 import docx, sys
+import docx.table
 doc = docx.Document(sys.argv[1])
-lines = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
-print(len(lines))
+count = 0
+for block in doc.element.body:
+    tag = block.tag.split('}')[-1]
+    if tag == 'p':
+        text = ''.join(node.text or '' for node in block.iter() if node.tag.endswith('}t')).strip()
+        if text:
+            count += 1
+    elif tag == 'tbl':
+        tbl = docx.table.Table(block, doc)
+        for row in tbl.rows:
+            cells = [c.text.strip() for c in row.cells if c.text.strip()]
+            if cells:
+                count += 1
+print(count)
 EOF
 ```
 

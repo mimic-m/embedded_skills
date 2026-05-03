@@ -36,7 +36,7 @@ From each `@@` hunk, identify:
 
 For each changed function, apply the following checks:
 
-> **Identifying ISR handlers:** Treat a function as an ISR if its name matches `*_IRQHandler` or `*_Handler`, it is decorated with `__attribute__((interrupt))` or `__attribute__((isr))`, or it is registered via `NVIC_SetVector` or equivalent. If ambiguous, note the uncertainty in the issue block rather than skipping the check.
+> **Identifying ISR handlers:** Treat a function as an ISR when there is strong evidence: the name matches `*_IRQHandler`, it is decorated with `__attribute__((interrupt))` or `__attribute__((isr))`, it appears in a vector table, or it is registered via `NVIC_SetVector` or an equivalent interrupt-vector API. A generic `*_Handler` name alone is ambiguous (for example `Error_Handler`); in that case, emit an `[INFO]` note asking the user to verify ISR context instead of automatically applying ISR-only severities.
 
 | Check | Pattern to detect | Severity |
 | ----- | ----------------- | -------- |
