@@ -11,12 +11,47 @@
 | ------ | ---- | ---- |
 | [`extract-requirements-documents`](skills/extract-requirements-documents/SKILL.md) | 要件定義 | 顧客から提供された PDF・docx・xlsx 資料から要件を抽出し、日本語の要件定義書（Markdown）を生成する |
 | [`change-spec-from-diff`](skills/change-spec-from-diff/SKILL.md) | 設計 / 実装後 | issue・要件テキスト・git diff から変更仕様書（日本語 Markdown）を生成する |
-| [`static-analysis-report`](skills/static-analysis-report/SKILL.md) | コードレビュー | Cppcheck / PC-lint の解析結果から MISRA-C 対応の重大度タグ付きレポートを生成する |
 | [`c-code-review-from-diff`](skills/c-code-review-from-diff/SKILL.md) | コードレビュー | git diff の変更箇所を組み込み観点＋一般品質観点でレビューし、重大度付きレポートを出力する |
 | [`ceedling-test-from-diff`](skills/ceedling-test-from-diff/SKILL.md) | 単体テスト | git diff から Ceedling ユニットテスト（`test_*.c`）を生成・更新する |
 | [`fff-mock-generation`](skills/fff-mock-generation/SKILL.md) | 単体テスト | git diff から FFF フェイク関数宣言（`FAKE_VOID_FUNC` / `FAKE_VALUE_FUNC`）を生成する |
 | [`docx-review-comment-from-diff`](skills/docx-review-comment-from-diff/SKILL.md) | ドキュメント管理 | git diff をもとに既存 Word 仕様書（.docx）の修正が必要な箇所を特定し、レポートを出力する |
 | [`technical-writing-review`](skills/technical-writing-review/SKILL.md) | ドキュメント管理 | 日本語技術文書を Google Technical Writing One の8カテゴリでレビューし、改善案付きレポートを出力する |
+
+---
+
+## スキルの対象工程
+
+```mermaid
+flowchart LR
+    A[顧客資料<br/>PDF / docx / xlsx] --> B[要件定義]
+    B --> C[設計]
+    C --> D[実装]
+    D --> E[レビュー]
+    E --> F[単体テスト]
+    F --> G[仕様書・リリース文書更新]
+
+    B --> S1[extract-requirements-documents]
+    C --> S2[change-spec-from-diff<br/>実装前]
+    E --> S3[c-code-review-from-diff]
+    F --> S4[ceedling-test-from-diff]
+    F --> S5[fff-mock-generation]
+    G --> S6[change-spec-from-diff<br/>実装後]
+    G --> S7[docx-review-comment-from-diff]
+    G --> S8[technical-writing-review]
+```
+
+## ユースケース別マッピング
+
+| ユースケース | 対象工程 | 使用するスキル | 入力 | 出力 |
+| ------------ | -------- | -------------- | ---- | ---- |
+| 顧客資料から要件を整理したい | 要件定義 | `extract-requirements-documents` | PDF / docx / xlsx | 要件定義書 |
+| issue や口頭説明から実装前の変更仕様を作りたい | 設計 | `change-spec-from-diff` | issue / 要件テキスト / 口頭説明 | 変更仕様書 |
+| 実装差分から変更内容を記録したい | 実装後記録 | `change-spec-from-diff` | `git diff` | 変更仕様書 |
+| C/C++差分を組み込み観点でレビューしたい | コードレビュー | `c-code-review-from-diff` | `git diff` | 重大度付きコードレビューレポート |
+| 変更関数のユニットテストを作りたい | 単体テスト | `ceedling-test-from-diff` | `git diff` / 既存 `test_*.c` | Ceedling テスト |
+| 外部依存関数の FFF フェイクを作りたい | 単体テスト | `fff-mock-generation` | `git diff` / 関数呼び出し | `FAKE_VOID_FUNC` / `FAKE_VALUE_FUNC` 宣言 |
+| コード変更に合わせて Word 仕様書の修正箇所を知りたい | ドキュメント管理 | `docx-review-comment-from-diff` | `.docx` / `git diff` | 仕様書修正指示レポート |
+| 日本語技術文書の読みやすさを改善したい | 文書品質レビュー | `technical-writing-review` | Markdown / テキスト | 指摘と before/after 改善案 |
 
 ---
 
@@ -26,7 +61,7 @@
 
 ```bash
 # 例: すべてのスキルをインストール
-for skill in extract-requirements-documents change-spec-from-diff static-analysis-report c-code-review-from-diff ceedling-test-from-diff fff-mock-generation docx-review-comment-from-diff technical-writing-review; do
+for skill in extract-requirements-documents change-spec-from-diff c-code-review-from-diff ceedling-test-from-diff fff-mock-generation docx-review-comment-from-diff technical-writing-review; do
   mkdir -p ~/.claude/skills/$skill
   cp skills/$skill/SKILL.md ~/.claude/skills/$skill/SKILL.md
 done
@@ -53,18 +88,6 @@ git diff HEAD~1 HEAD の変更仕様書を作成してください
 ```
 
 issue・要件テキスト・git diff のいずれかを入力として受け付け、関数追加・インターフェース変更・動作変更などを分類し、要件（What/Why/What→What）・変更概要・シーケンス図・ファイル一覧をまとめた日本語 Markdown を `docs/changes/` に出力します。
-
-### `static-analysis-report`
-
-```text
-cppcheck-result.xml から静的解析レポートを作成してください
-```
-
-```text
-src/ ディレクトリに Cppcheck を実行してレポートを作成してください
-```
-
-Cppcheck XML / PC-lint テキストをパースし、MISRA-C 規則種別（Mandatory / Required / Advisory）と組み込み固有の昇格ルール（ISR内指摘・malloc・volatile漏れ）を適用した重大度タグ付きレポートを `docs/static-analysis/` に出力します。
 
 ### `c-code-review-from-diff`
 
@@ -125,18 +148,17 @@ technical-writing-reviewでREADME.mdをレビューしてください
 ### 実装・PR レビューフェーズ
 
 ```text
-3. static-analysis-report           静的解析で構造的な問題を先に洗い出す
-4. c-code-review-from-diff          組み込み観点のコードレビュー
-5. ceedling-test-from-diff          変更関数のユニットテスト生成・更新
-6. fff-mock-generation              必要なフェイク関数の宣言を生成
+3. c-code-review-from-diff          組み込み観点のコードレビュー
+4. ceedling-test-from-diff          変更関数のユニットテスト生成・更新
+5. fff-mock-generation              必要なフェイク関数の宣言を生成
 ```
 
 ### リリース前・ドキュメント更新フェーズ
 
 ```text
-7. change-spec-from-diff            git diff をもとに変更仕様書を確定
-8. docx-review-comment-from-diff    既存 Word 仕様書の修正が必要な箇所を特定
-9. technical-writing-review         リリース文書や仕様書の日本語品質を確認
+6. change-spec-from-diff            git diff をもとに変更仕様書を確定
+7. docx-review-comment-from-diff    既存 Word 仕様書の修正が必要な箇所を特定
+8. technical-writing-review         リリース文書や仕様書の日本語品質を確認
 ```
 
 ---
@@ -151,7 +173,6 @@ technical-writing-reviewでREADME.mdをレビューしてください
 | python-docx または pandoc | docx テキスト抽出 | `docx-review-comment-from-diff` / `extract-requirements-documents` 使用時 |
 | pdftotext (poppler-utils) または pdfplumber | PDF テキスト抽出 | `extract-requirements-documents` 使用時 |
 | openpyxl または pandas | xlsx テキスト抽出 | `extract-requirements-documents` 使用時 |
-| [Cppcheck](https://cppcheck.sourceforge.io/) | 静的解析の実行 | `static-analysis-report` でソース直接解析時 |
 
 ---
 

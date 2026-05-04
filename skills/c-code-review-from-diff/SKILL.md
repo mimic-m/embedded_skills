@@ -5,17 +5,13 @@ description: Use when reviewing C/C++ embedded code changes from git diff. Trigg
 
 # C/C++ Embedded Code Review from Git Diff
 
-## Overview
-
-Parse `git diff` to identify changed C/C++ functions, then produce a severity-annotated Markdown report covering embedded-specific and general quality concerns.
-
 ## Workflow
 
-```text
-git diff → parse diff → extract changed functions → embedded checks → quality checks → output report
-```
-
-### Step 0: Get the Diff
+1. Get the requested diff.
+2. Identify changed C/C++ functions from `@@` hunks.
+3. Review only changed code unless surrounding context is required to prove an issue.
+4. Apply embedded and general quality checks.
+5. Output a severity-annotated Markdown report.
 
 ```bash
 git diff HEAD          # unstaged changes
@@ -23,7 +19,7 @@ git diff HEAD~1 HEAD   # last commit
 git diff main...HEAD   # branch changes
 ```
 
-### Step 1: Extract Changed Functions
+## Diff Parsing
 
 From each `@@` hunk, identify:
 
@@ -32,11 +28,9 @@ From each `@@` hunk, identify:
 - New conditionals (`if`/`else`/`switch`) — note for branch coverage
 - New external calls — potential HAL boundary violations
 
-### Step 2: Embedded-Specific Checks
+## Embedded Checks
 
-For each changed function, apply the following checks:
-
-> **Identifying ISR handlers:** Treat a function as an ISR when there is strong evidence: the name matches `*_IRQHandler`, it is decorated with `__attribute__((interrupt))` or `__attribute__((isr))`, it appears in a vector table, or it is registered via `NVIC_SetVector` or an equivalent interrupt-vector API. A generic `*_Handler` name alone is ambiguous (for example `Error_Handler`); in that case, emit an `[INFO]` note asking the user to verify ISR context instead of automatically applying ISR-only severities.
+Treat a function as an ISR only with strong evidence: `*_IRQHandler`, interrupt/isr attributes, vector-table entry, or registration via `NVIC_SetVector` or equivalent. A generic `*_Handler` name alone is ambiguous; emit `[INFO]` instead of applying ISR-only severities.
 
 | Check | Pattern to detect | Severity |
 | ----- | ----------------- | -------- |
@@ -51,7 +45,7 @@ For each changed function, apply the following checks:
 | Large stack allocation | Local array or struct > 256 bytes on stack (adjust to project stack size if known from linker script) | MEDIUM |
 | Magic register address | Bare hex constant for a peripheral register address | MEDIUM |
 
-### Step 3: General Quality Checks
+## Quality Checks
 
 | Check | Threshold | Severity |
 | ----- | --------- | -------- |
@@ -64,13 +58,9 @@ For each changed function, apply the following checks:
 | Hidden global dependency | Function reads/writes a global without it being a parameter | MEDIUM |
 | Missing error path | Function can fail internally but always returns success | HIGH |
 
-### Step 4: Write the Report
-
-For each issue found, write a block with severity tag, file location, code snippet, reason, and concrete fix.
-
-After writing all issue blocks, append a "Passed Checks" section listing every check from Steps 2 and 3 that produced no finding, tagged with `[embedded]` or `[quality]` as shown in the output format.
-
 ## Output Format
+
+For each issue, include severity, file location, small code snippet only when useful, reason, and concrete fix.
 
 ```markdown
 # Code Review Report
@@ -88,32 +78,16 @@ After writing all issue blocks, append a "Passed Checks" section listing every c
 ### [CRITICAL] malloc called inside ISR
 
 - **File:** `src/uart.c:87`
-- **Code:**
-```c
-void USART1_IRQHandler(void) {
-    char *buf = malloc(RX_BUF_LEN);  /* heap allocation in ISR */
-}
-```
-- **Reason:** Heap allocation in an ISR is unsafe — the allocator is not reentrant and may deadlock if the ISR fires during a malloc in main context.
-- **Fix:** Declare the buffer as a static or file-scope array instead.
-
-```c
-static char rx_buf[RX_BUF_LEN];
-void USART1_IRQHandler(void) {
-    char *buf = rx_buf;
-}
-```
+- **Reason:** Heap allocation in an ISR is unsafe because allocators are usually non-reentrant and may block.
+- **Fix:** Use a static/file-scope buffer or preallocated pool.
 
 ### [HIGH] <title>
 ...
 
 ## Passed Checks
 
-- [embedded] No malloc/free in ISR
-- [embedded] No blocking calls in ISR
-- [embedded] All shared variables are volatile
-- [quality ] All return values are checked
-- [quality ] No functions exceed 50 lines
+- [embedded] No ISR-only hazards found in changed functions
+- [quality] No unchecked return values found in changed functions
 ```
 
 ## Inconclusive Checks
@@ -128,7 +102,7 @@ If a check cannot be determined from the diff alone (e.g., whether a variable is
 
 ## Output File
 
-Write to `docs/reviews/YYYY-MM-DD-<module>-review.md` relative to the repository root (the directory containing `.git/`). `<module>` is the basename of the primary changed file (e.g., `uart` for `src/uart.c`). If multiple files changed, use the first alphabetically. Create the directory before writing:
+Write to `docs/reviews/YYYY-MM-DD-<module>-review.md` relative to the repository root when a `docs/` directory already exists. `<module>` is the basename of the primary changed file; if multiple files changed, use the first alphabetically.
 
 ```bash
 mkdir -p docs/reviews
@@ -145,52 +119,3 @@ If no `docs/` directory exists in the project root, print the report to stdout i
 | MEDIUM   | Maintainability concern                          | Consider fixing         |
 | LOW      | Style or minor suggestion                        | Optional                |
 | INFO     | Cannot be determined from diff alone             | Verify manually outside diff |
-
-## Common Embedded Fix Patterns
-
-### ISR-safe variable sharing
-
-```c
-/* WRONG — missing volatile */
-static uint8_t rx_flag = 0;
-void USART1_IRQHandler(void) { rx_flag = 1; }
-
-/* CORRECT */
-static volatile uint8_t rx_flag = 0;
-void USART1_IRQHandler(void) { rx_flag = 1; }
-```
-
-### Critical section for read-modify-write
-
-```c
-/* WRONG — non-atomic on Cortex-M */
-shared_counter++;
-
-/* CORRECT */
-__disable_irq();
-shared_counter++;
-__enable_irq();
-```
-
-### Timeout on blocking I/O
-
-```c
-/* WRONG — infinite block */
-HAL_UART_Receive(&huart1, buf, len, HAL_MAX_DELAY);
-
-/* CORRECT */
-HAL_StatusTypeDef status = HAL_UART_Receive(&huart1, buf, len, UART_TIMEOUT_MS);
-if (status != HAL_OK) {
-    /* handle timeout or error */
-}
-```
-
----
-
-### 最終ステップ: フィードバック収集
-
-レポートまたは生成物を出力した後、ユーザーに以下を確認する：
-
-- 指摘・生成内容に過不足がないか
-- 次回から強めたい観点または弱めたい観点があるか
-- プロジェクト固有ルールとして追加すべき判断基準があるか
