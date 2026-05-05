@@ -81,6 +81,27 @@ Error:
 - JUnit XMLに同名テストケースがない場合はエラー。
 - production関数名自体に `_Success_` または `_Fail_` が含まれる場合は曖昧なのでエラー、または将来のalias設定で対応する。
 
+## Test Case Doxygen Comment Parsing
+
+各テストケース関数の直前には、以下のDoxygenコメントが必須。
+
+```c
+/**
+ * @brief <target_function> <Success|Fail>
+ * Representative: <main test parameters and mock return values>
+ * @details <expected result when executing the target function>
+ */
+void test_<target_function>_<Success|Fail>_<representative_condition>(void)
+```
+
+Extraction:
+
+1. `@brief` 行からテスト対象関数名と `Success` / `Fail` を取得する。
+2. `@brief` の次行から代表的なテストパラメータおよびmock関数戻り値を取得する。
+3. `@details` から期待値を取得する。例: `xxを返す`, `yyにzzzが設定される`, `mmm関数がコールされること`。
+4. 関数名から得た `target_function` / `Success|Fail` と `@brief` の内容が矛盾する場合はエラー。
+5. `Representative:` ラベルは推奨。ラベルがない場合も、`@brief` 直後の1行を代表条件として扱う。
+
 ## Marker Parsing
 
 各テストケース関数は以下3組のマーカーを必ず持つ。
@@ -248,10 +269,11 @@ Columns:
 | Column | Source |
 |---|---|
 | ソースコード | mapped source file path |
-| テスト関数 | parsed `target_function` |
+| テスト関数 | `@brief` and function-name parsed `target_function` |
 | テストケース関数名 | C test function name |
-| 正常系/異常系情報 | parsed `Success` or `Fail` |
-| 代表的なテストパラメータ及びmock関数の戻り値 | parsed representative condition with `_` converted to spaces |
+| 正常系/異常系情報 | `@brief` and function-name parsed `Success` or `Fail` |
+| 代表的なテストパラメータ及びmock関数の戻り値 | Doxygen representative line; fallback to function-name representative condition with `_` converted to spaces |
+| 期待値 | Doxygen `@details` text |
 | テストパラメータ | marker-extracted code |
 | テストシーケンス | marker-extracted code |
 | チェック項目 | marker-extracted code |

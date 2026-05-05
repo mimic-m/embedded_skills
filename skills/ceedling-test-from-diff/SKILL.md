@@ -98,6 +98,27 @@ void test_process_Fail_null_ctx(void)
 void test_module_process_request_Success_valid_id_dep_read_ok(void)
 ```
 
+### Test Case Doxygen Comment
+
+Every generated test function must have a Doxygen comment immediately before the function definition.
+
+Format:
+
+```c
+/**
+ * @brief <target_function> <Success|Fail>
+ * Representative: <main test parameters and mock return values>
+ * @details <expected result when executing the target function>
+ */
+void test_<target_function>_<Success|Fail>_<representative_condition>(void)
+```
+
+Rules:
+- `@brief` line contains the test target function name and `Success` or `Fail` on the same line.
+- The next line after `@brief` contains representative test parameters and mock return values.
+- `@details` describes expected behavior: return value, output parameter updates, global/state changes, and called/not-called mock functions.
+- Keep the function-internal Japanese `@verbatim` marker pairs for Excel code extraction.
+
 ### Excel Report Extraction Markers
 
 Every generated test case must include all three marker pairs below. The Excel report script extracts the real C code between each start marker and end marker and writes it to the corresponding Excel column.
@@ -169,6 +190,11 @@ void setUp(void) {
 
 void tearDown(void) { }
 
+/**
+ * @brief process Success
+ * Representative: ctx is valid, dep_read returns 4
+ * @details process returns 4, dep_flush is called before dep_read, and dep_read is called.
+ */
 void test_process_Success_valid_ctx_dep_read_returns_4(void) {
     /** @verbatim テストパラメータ
      * @endverbatim
@@ -198,6 +224,11 @@ void test_process_Success_valid_ctx_dep_read_returns_4(void) {
      */
 }
 
+/**
+ * @brief process Fail
+ * Representative: ctx is NULL
+ * @details process returns ERROR_NULL and dep_read is not called.
+ */
 void test_process_Fail_null_ctx(void) {
     /** @verbatim テストパラメータ
      * @endverbatim
@@ -254,31 +285,90 @@ void setUp(void) {
 }
 ```
 
-### Pattern C — RTOS API fakes (FreeRTOS / CMSIS-RTOS)
+### Pattern C — uITRON OS API fakes
 
-Use when the module under test calls RTOS primitives directly (`xQueueSend`, `xTaskNotify`, `osSemaphoreAcquire`, etc.). Fake the RTOS API rather than pulling in the real scheduler.
+Use when the module under test calls uITRON-style OS primitives directly (`wai_sem`, `sig_sem`, `snd_dtq`, `rcv_dtq`, `set_flg`, etc.). Fake the OS API rather than linking a real kernel or starting a scheduler.
 
 ```c
-FAKE_VALUE_FUNC(BaseType_t, xQueueSend,    QueueHandle_t, const void *, TickType_t);
-FAKE_VALUE_FUNC(BaseType_t, xQueueReceive, QueueHandle_t, void *,       TickType_t);
-FAKE_VALUE_FUNC(BaseType_t, xTaskNotify, TaskHandle_t, uint32_t, eNotifyAction);
-FAKE_VALUE_FUNC(BaseType_t, xSemaphoreTake, SemaphoreHandle_t, TickType_t);
-FAKE_VALUE_FUNC(BaseType_t, xSemaphoreGive, SemaphoreHandle_t);
+/* Include only the project OS type definitions, or define minimal test types. */
+#include "kernel.h"  /* ER, ID, TMO, FLGPTN, VP_INT, E_OK, E_TMOUT, ... */
+
+FAKE_VALUE_FUNC(ER, wai_sem, ID);
+FAKE_VALUE_FUNC(ER, sig_sem, ID);
+FAKE_VALUE_FUNC(ER, twai_sem, ID, TMO);
+FAKE_VALUE_FUNC(ER, snd_dtq, ID, VP_INT);
+FAKE_VALUE_FUNC(ER, rcv_dtq, ID, VP_INT *);
+FAKE_VALUE_FUNC(ER, set_flg, ID, FLGPTN);
+FAKE_VALUE_FUNC(ER, wai_flg, ID, FLGPTN, UINT, FLGPTN *);
 
 void setUp(void) {
-    RESET_FAKE(xQueueSend);
-    RESET_FAKE(xQueueReceive);
-    RESET_FAKE(xTaskNotify);
-    RESET_FAKE(xSemaphoreTake);
-    RESET_FAKE(xSemaphoreGive);
+    RESET_FAKE(wai_sem);
+    RESET_FAKE(sig_sem);
+    RESET_FAKE(twai_sem);
+    RESET_FAKE(snd_dtq);
+    RESET_FAKE(rcv_dtq);
+    RESET_FAKE(set_flg);
+    RESET_FAKE(wai_flg);
     FFF_RESET_HISTORY();
 
-    xSemaphoreTake_fake.return_val = pdTRUE;   /* default: lock succeeds */
-    xSemaphoreGive_fake.return_val = pdTRUE;
+    wai_sem_fake.return_val = E_OK;   /* default: lock succeeds */
+    sig_sem_fake.return_val = E_OK;
+    twai_sem_fake.return_val = E_OK;
+    snd_dtq_fake.return_val = E_OK;
+    rcv_dtq_fake.return_val = E_OK;
+    set_flg_fake.return_val = E_OK;
+    wai_flg_fake.return_val = E_OK;
 }
 ```
 
-> **Note on FreeRTOS headers:** Include `FreeRTOS.h` only for type definitions. Do not link the real FreeRTOS kernel — the fakes replace all scheduler calls. Add `-DUNIT_TEST` or equivalent to suppress any `configASSERT` macros that would call real RTOS functions.
+For OS APIs with output parameters, use a custom fake to fill the output value:
+
+```c
+static ER rcv_dtq_ok(ID dtqid, VP_INT *p_data)
+{
+    (void)dtqid;
+    *p_data = (VP_INT)0x1234;
+    return E_OK;
+}
+
+/**
+ * @brief receive Success
+ * Representative: rcv_dtq returns E_OK and writes 0x1234
+ * @details receive_from_dtq returns E_OK, data is set to 0x1234, and rcv_dtq is called.
+ */
+void test_receive_Success_rcv_dtq_returns_data(void)
+{
+    /** @verbatim テストパラメータ
+     * @endverbatim
+     */
+    ER ercd;
+    VP_INT data = 0;
+    rcv_dtq_fake.custom_fake = rcv_dtq_ok;
+    /** @verbatim テストパラメータ終了
+     * @endverbatim
+     */
+
+    /** @verbatim テストシーケンス
+     * @endverbatim
+     */
+    ercd = receive_from_dtq(&data);
+    /** @verbatim テストシーケンス終了
+     * @endverbatim
+     */
+
+    /** @verbatim チェック項目
+     * @endverbatim
+     */
+    TEST_ASSERT_EQUAL_INT(E_OK, ercd);
+    TEST_ASSERT_EQUAL_HEX32(0x1234, data);
+    TEST_ASSERT_CALLED(rcv_dtq);
+    /** @verbatim チェック項目終了
+     * @endverbatim
+     */
+}
+```
+
+> **Note on uITRON headers:** Include the project kernel header only for type definitions and constants. Do not link the real kernel. If the production header pulls in inline kernel code or target-only definitions, add a unit-test shim header that defines only the required uITRON types (`ER`, `ID`, `TMO`, `FLGPTN`, `VP_INT`, etc.) and error codes (`E_OK`, `E_TMOUT`, `E_PAR`, `E_ID`, etc.).
 
 ### Choosing between Pattern A, Pattern B, and Pattern C
 
@@ -287,9 +377,9 @@ void setUp(void) {
 | `dep_func(args)` — direct call, `dep_func` is in another `.c` file | A |
 | `ctx->backend->send(args)` — call through function pointer | B |
 | `obj->vtable->method(args)` — vtable / interface | B |
-| `xQueueSend`, `xTaskNotify`, `osSemaphore*`, etc. — RTOS primitive | C |
+| `wai_sem`, `sig_sem`, `snd_dtq`, `rcv_dtq`, `set_flg`, etc. — uITRON OS primitive | C |
 | Mix of free functions + vtable | A + B |
-| Mix of free functions + RTOS | A + C |
+| Mix of free functions + uITRON OS APIs | A + C |
 
 ### fff_unity_helper.h macros (Ceedling FFF plugin)
 
@@ -384,6 +474,7 @@ When a test file already exists, the diff may have broken existing tests. Detect
 | New mandatory dependency added | No `FAKE_*_FUNC` declared → link error | Add `FAKE_*_FUNC`, `RESET_FAKE` in setUp, and `call_count` assertion |
 | Existing test lacks Excel markers | Report script fails in UPDATE mode | Add all three Japanese marker pairs while touching the test |
 | Existing test name lacks `_Success_` or `_Fail_` | Report script rejects the test case | Rename to `test_<target>_<Success|Fail>_<representative_condition>` |
+| Existing test lacks Doxygen test case comment | Excel/report metadata is incomplete | Add `@brief`, representative line, and `@details` before the test function |
 
 ### Update Workflow
 
@@ -395,9 +486,10 @@ When a test file already exists, the diff may have broken existing tests. Detect
    c. Does it reference a function that was deleted? → remove test
    d. Does it lack the required `_Success_` or `_Fail_` delimiter? → rename it
    e. Does it lack any Excel extraction marker pair? → add all three marker pairs
+   f. Does it lack the required Doxygen comment? → add `@brief`, representative line, and `@details`
 3. Add FAKE_*_FUNC for any new dependencies; add RESET_FAKE in setUp
 4. Append new test functions for newly added code paths
-5. Before reporting, ensure every test case in each reported test file follows the naming and marker rules, including legacy tests not directly changed by the diff
+5. Before reporting, ensure every test case in each reported test file follows the naming, Doxygen comment, and marker rules, including legacy tests not directly changed by the diff
 ```
 
 ### Example: Signature Change → Stale Test Fix
@@ -422,6 +514,11 @@ void test_sensor_read_returns_ok(void) {
 /* hal_adc_read now called internally — add fake at top of file:   */
 /* FAKE_VALUE_FUNC(uint8_t, hal_adc_read, uint8_t);                */
 
+/**
+ * @brief sensor_read Success
+ * Representative: channel is 0, hal_adc_read returns 0x42
+ * @details sensor_read returns SENSOR_OK, out is set to 0x42, and hal_adc_read is called.
+ */
 void test_sensor_read_Success_channel_0_hal_adc_read_returns_42(void) {
     /** @verbatim テストパラメータ
      * @endverbatim
@@ -487,6 +584,11 @@ When reading the diff, for each changed function ask:
 
 **Generated tests:**
 ```c
+/**
+ * @brief sensor_read Fail
+ * Representative: sensor pointer is NULL
+ * @details sensor_read returns SENSOR_ERR_NULL and hal_adc_read is not called.
+ */
 void test_sensor_read_Fail_sensor_null(void) {
     /** @verbatim テストパラメータ
      * @endverbatim
@@ -515,6 +617,11 @@ void test_sensor_read_Fail_sensor_null(void) {
      */
 }
 
+/**
+ * @brief sensor_read Fail
+ * Representative: out pointer is NULL
+ * @details sensor_read returns SENSOR_ERR_NULL and hal_adc_read is not called.
+ */
 void test_sensor_read_Fail_out_null(void) {
     /** @verbatim テストパラメータ
      * @endverbatim
@@ -543,6 +650,11 @@ void test_sensor_read_Fail_out_null(void) {
      */
 }
 
+/**
+ * @brief sensor_read Success
+ * Representative: channel is 2, hal_adc_read returns 0xAB
+ * @details sensor_read returns SENSOR_OK, out is set to 0xAB, and hal_adc_read is called with channel 2.
+ */
 void test_sensor_read_Success_channel_2_hal_adc_read_returns_ab(void) {
     /** @verbatim テストパラメータ
      * @endverbatim
